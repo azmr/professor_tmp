@@ -290,18 +290,35 @@ prof_print_scope(Prof const *prof)
 #define prof_print_scope(...)
 #endif//PROF_PRINT_SCOPE
 
-#define PROF_CAT1(a,b) a ## b
-#define PROF_CAT2(a,b) PROF_CAT1(a,b)
-#define PROF_CAT(a,b)  PROF_CAT2(a,b)
-#define prof_static_local_record_i_ PROF_CAT(prof_static_local_record_i_, __LINE__)
-#define prof_scope_once PROF_CAT(prof_scope_once, __LINE__)
+#if PROFESSOR_DISABLE
+# define prof_start(prof, name)
+# define prof_mark(prof, name)
+# define prof_ptr_realloc(prof, name, addr, addr_p)
+# define prof_ptr_alloc(prof, name, ptr, size)
+# define prof_ptr_free( prof, name, ptr)
+# define prof_scope(prof, name)
+# define prof_scope_n(prof, name, n)
 
-#define PROF_NEW_RECORD(prof, name) \
+# define prof_start_fn(prof)
+# define prof_end_n_fn(prof, n)
+# define prof_end_fn(prof)
+# define prof_end_unchecked(...)
+# define prof_end_n(...)
+# define prof_end(...)
+
+#else // PROFESSOR_DISABLE
+# define PROF_CAT1(a,b) a ## b
+# define PROF_CAT2(a,b) PROF_CAT1(a,b)
+# define PROF_CAT(a,b)  PROF_CAT2(a,b)
+# define prof_static_local_record_i_ PROF_CAT(prof_static_local_record_i_, __LINE__)
+# define prof_scope_once PROF_CAT(prof_scope_once, __LINE__)
+
+# define PROF_NEW_RECORD(prof, name) \
     static ProfIdx prof_static_local_record_i_ = ~(ProfIdx) 0; \
     if (! ~prof_static_local_record_i_) /* TODO: atomic */ \
     {   prof_static_local_record_i_ = prof_new_record(prof, name, __FILE__, __LINE__);   } \
 
-#define prof_start(prof, name) \
+# define prof_start(prof, name) \
     do { \
         PROF_NEW_RECORD(prof, name) \
         prof_start_(prof, prof_static_local_record_i_); \
@@ -309,28 +326,28 @@ prof_print_scope(Prof const *prof)
         /* __itt_task_begin(0, __itt_null, __itt_null, __itt_string_handle_createA(name));\ */ \
     } while (0)
 
-#define prof_mark(prof, name) \
+# define prof_mark(prof, name) \
     do { \
         PROF_NEW_RECORD(prof, name) \
         prof_mark_(prof, prof_static_local_record_i_); \
         prof_print_scope(prof); \
     } while (0)
 
-#define prof_ptr_realloc(prof, name, addr, addr_p) \
+# define prof_ptr_realloc(prof, name, addr, addr_p) \
     do { \
         PROF_NEW_RECORD(prof, name) \
         prof_ptr_realloc_(prof, prof_static_local_record_i_, addr, addr_p, size); \
     } while (0)
 
-#define prof_ptr_alloc(prof, name, ptr, size) prof_ptr_realloc(prof, name, addr, 0, size)
-#define prof_ptr_free( prof, name, ptr)       prof_ptr_realloc(prof, name, addr, 0, 0)
+# define prof_ptr_alloc(prof, name, ptr, size) prof_ptr_realloc(prof, name, addr, 0, size)
+# define prof_ptr_free( prof, name, ptr)       prof_ptr_realloc(prof, name, addr, 0, 0)
 
 
 // NOTE: can't nest without braces
-#define prof_scope(prof, name) prof_scope_n(prof, name, 1)
-#define prof_scope_n(prof, name, n) prof_start(prof, name); \
+# define prof_scope(prof, name) prof_scope_n(prof, name, 1)
+# define prof_scope_n(prof, name, n) prof_start(prof, name); \
     for (int prof_scope_once = 0; prof_scope_once++ == 0; prof_end_n_unchecked(prof, n))
-#define prof_exit_scope continue
+# define prof_exit_scope continue
 
 // returns the index of the record referenced, so you can double check this is correct
 static inline ProfIdx
@@ -376,9 +393,10 @@ static inline ProfIdx
 prof_end_unchecked(Prof *prof)
 {   return prof_end_n_unchecked(prof, 1);   }
 
-#define prof_start_fn(prof) prof_start(prof, __func__); ProfIdx prof_fn_local_record_i = prof_top_record_i(prof)
-#define prof_end_n_fn(prof, n)   prof_end_n(prof, prof_fn_local_record_i, n)
-#define prof_end_fn(prof)        prof_end_n_fn(prof, 1)
+# define prof_start_fn(prof)    prof_start(prof, __func__); ProfIdx prof_fn_local_record_i = prof_top_record_i(prof)
+# define prof_end_n_fn(prof, n) prof_end_n(prof, prof_fn_local_record_i, n)
+# define prof_end_fn(prof)      prof_end_n_fn(prof, 1)
+#endif // PROFESSOR_DISABLE
 
 #if 1 // OUTPUT
 

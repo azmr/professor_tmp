@@ -10,11 +10,13 @@
 #include <stdio.h>
 #include <assert.h>
 
+#if WIN32
 // NOTE: this takes a surprisingly long time to load and I only need this one definition
 // if this can't be found in linking, your platform is probably not supported, sorry!
 // This may be a mistake though, let me know if you think so.
 // #include <intrin.h> // __rdtsc()
 uint64_t __rdtsc(void);
+#endif
 
 // TODO: for DLLs prof_set_global_state
 // TODO: atomics
